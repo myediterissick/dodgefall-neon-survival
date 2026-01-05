@@ -1088,6 +1088,13 @@
     run.eventTimer += dt;
 
     if(ev==="wall"){
+  // new fair wall code here
+}
+
+if(ev==="burst"){
+  // your existing burst code
+}
+
       // every 1.2s spawn wall with gap
       const every = 1.2 / difficultyScale();
       if(run.eventTimer < 7.5){
