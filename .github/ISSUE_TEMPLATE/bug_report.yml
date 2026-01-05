@@ -1,0 +1,85 @@
+name: Bug Report
+description: Report a problem with Dodgefall: Neon Survival
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill this out so I can reproduce it.
+
+  - type: input
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear, short summary of the bug.
+      placeholder: "Example: The dash stops working after pausing."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Tell me exactly how to trigger the issue.
+      placeholder: |
+        1. Open the game
+        2. Start a run
+        3. Press P to pause
+        4. Press Space to dash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: "Example: Dash should work normally after unpausing."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      placeholder: "Example: Dash cooldown never refills."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Safari
+        - Edge
+        - Firefox
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device / OS
+      placeholder: "Example: MacBook Air (macOS 14) or Windows 11 PC"
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Video (optional)
+      description: Drag & drop files here if you have them.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra info (optional)
+      description: Anything else that might help (console errors, etc.)
+    validations:
+      required: false
