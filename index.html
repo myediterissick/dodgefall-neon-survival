@@ -1,0 +1,1870 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>Dodgefall: Neon Survival</title>
+  <style>
+    :root{
+      --bg0:#070712;
+      --bg1:#0b1030;
+      --ui:#e8eeff;
+      --muted:#aab4d6;
+      --accent:#7cf6ff;
+      --accent2:#c77dff;
+      --danger:#ff4d6d;
+      --good:#4dff88;
+      --warn:#ffd24d;
+      --panel:rgba(12,16,34,.72);
+      --panel2:rgba(12,16,34,.88);
+      --stroke:rgba(180,200,255,.18);
+      --shadow:rgba(0,0,0,.45);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; background:linear-gradient(180deg,var(--bg0),var(--bg1)); color:var(--ui); font-family:var(--sans); overflow:hidden}
+    canvas{display:block; width:100vw; height:100vh}
+    .hud{
+      position:fixed; left:0; top:0; width:100%;
+      pointer-events:none;
+    }
+    .row{
+      display:flex; gap:12px; align-items:flex-start;
+      padding:12px;
+      justify-content:space-between;
+    }
+    .pill{
+      pointer-events:none;
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      box-shadow: 0 10px 30px var(--shadow);
+      border-radius:14px;
+      padding:10px 12px;
+      backdrop-filter: blur(8px);
+      min-width: 190px;
+    }
+    .pill h3{margin:0 0 6px 0; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+    .pill .big{font-family:var(--mono); font-size:14px}
+    .pill .small{font-size:12px; color:var(--muted)}
+    .pill .bar{
+      height:10px; border-radius:999px; background:rgba(255,255,255,.06);
+      overflow:hidden; border:1px solid rgba(255,255,255,.08);
+      margin-top:8px;
+    }
+    .pill .bar > div{height:100%}
+    .pill .bar .hp{background:linear-gradient(90deg,var(--good),var(--accent))}
+    .pill .bar .dash{background:linear-gradient(90deg,var(--warn),var(--accent2))}
+    .pill .bar .xp{background:linear-gradient(90deg,var(--accent2),var(--accent))}
+    .pill .tags{
+      display:flex; flex-wrap:wrap; gap:6px; margin-top:8px
+    }
+    .tag{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--ui);
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .tag.good{border-color:rgba(77,255,136,.35)}
+    .tag.bad{border-color:rgba(255,77,109,.35)}
+    .tag.warn{border-color:rgba(255,210,77,.35)}
+    .toastWrap{
+      position:fixed;
+      left:12px;
+      bottom:12px;
+      width:min(420px, calc(100vw - 24px));
+      pointer-events:none;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .toast{
+      pointer-events:none;
+      background:var(--panel2);
+      border:1px solid rgba(124,246,255,.18);
+      box-shadow: 0 10px 30px var(--shadow);
+      border-radius:14px;
+      padding:10px 12px;
+      backdrop-filter: blur(10px);
+      animation: pop .25s ease-out;
+    }
+    @keyframes pop{
+      from{transform:translateY(6px); opacity:0}
+      to{transform:translateY(0); opacity:1}
+    }
+    .toast .tTitle{
+      font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent)
+    }
+    .toast .tBody{font-size:13px; color:var(--ui); margin-top:4px}
+    .overlay{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background:rgba(0,0,0,.44);
+      backdrop-filter: blur(8px);
+      padding:18px;
+      pointer-events:auto;
+    }
+    .overlay.show{display:flex}
+    .panel{
+      width:min(980px, 100%);
+      background:var(--panel2);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      box-shadow: 0 20px 80px rgba(0,0,0,.55);
+      overflow:hidden;
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      max-height:min(720px, 92vh);
+    }
+    .left{
+      padding:18px;
+      border-right:1px solid rgba(255,255,255,.10);
+      background:linear-gradient(180deg, rgba(124,246,255,.07), rgba(199,125,255,.05));
+    }
+    .right{
+      padding:18px;
+      overflow:auto;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:6px;
+      margin-bottom:12px;
+    }
+    .brand .name{
+      font-weight:800;
+      font-size:22px;
+      letter-spacing:.02em;
+    }
+    .brand .sub{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+    .btnRow{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
+    button{
+      all:unset;
+      cursor:pointer;
+      border-radius:12px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: 0 10px 20px rgba(0,0,0,.25);
+      transition: transform .08s ease, background .12s ease;
+      user-select:none;
+    }
+    button:hover{transform: translateY(-1px); background:rgba(255,255,255,.09)}
+    button:active{transform: translateY(0px); background:rgba(255,255,255,.07)}
+    button.primary{
+      border-color:rgba(124,246,255,.35);
+      background:linear-gradient(180deg, rgba(124,246,255,.16), rgba(124,246,255,.08));
+    }
+    button.danger{
+      border-color:rgba(255,77,109,.35);
+      background:linear-gradient(180deg, rgba(255,77,109,.18), rgba(255,77,109,.08));
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:12px;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:14px;
+      padding:12px;
+      background:rgba(255,255,255,.04);
+    }
+    .card h4{
+      margin:0 0 6px 0;
+      font-size:13px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .card .line{
+      font-family:var(--mono);
+      font-size:13px;
+      white-space:pre-wrap;
+    }
+    .card .desc{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.45}
+    .list{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .shopItem{
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.04);
+    }
+    .shopItem .meta{display:flex; flex-direction:column; gap:4px; max-width:70%}
+    .shopItem .title{font-weight:700}
+    .shopItem .detail{font-size:12px; color:var(--muted); line-height:1.35}
+    .shopItem .price{font-family:var(--mono); font-size:13px; color:var(--warn)}
+    .divider{height:1px; background:rgba(255,255,255,.10); margin:12px 0}
+    .kbd{font-family:var(--mono); font-size:12px; padding:2px 6px; border-radius:8px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05)}
+    .muted{color:var(--muted)}
+    .right::-webkit-scrollbar{width:10px}
+    .right::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10); border-radius:999px}
+    .footerNote{font-size:12px; color:var(--muted); margin-top:12px; line-height:1.4}
+    .toggleRow{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .toggleRow label{font-size:13px; color:var(--ui)}
+    input[type="range"]{width:140px}
+    .mini{font-size:12px; color:var(--muted)}
+    .badges{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+    .badge{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+    }
+    .badge.locked{opacity:.55}
+    .badge.unlocked{border-color:rgba(124,246,255,.28)}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="row">
+      <div class="pill">
+        <h3>Run</h3>
+        <div class="big" id="runLine">Score 0 • 0.0s • x1.0</div>
+        <div class="small" id="runSmall">Hazard 1 • Coins +0 • Combo 0</div>
+        <div class="bar"><div class="xp" id="hazBar" style="width:10%"></div></div>
+      </div>
+
+      <div class="pill" style="min-width:240px">
+        <h3>Player</h3>
+        <div class="big" id="plLine">HP 100 • Shield 0 • Dash Ready</div>
+        <div class="bar"><div class="hp" id="hpBar" style="width:100%"></div></div>
+        <div class="bar"><div class="dash" id="dashBar" style="width:100%"></div></div>
+        <div class="tags" id="statusTags"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toastWrap" id="toasts"></div>
+
+  <div class="overlay show" id="overlay">
+    <div class="panel">
+      <div class="left">
+        <div class="brand">
+          <div class="name">Dodgefall: Neon Survival</div>
+          <div class="sub">
+            Dodge falling blocks, chain combos, collect power-ups, and unlock permanent upgrades + advancements.
+            <div class="muted" style="margin-top:8px">
+              Controls: <span class="kbd">WASD</span>/<span class="kbd">Arrows</span> move • <span class="kbd">Space</span> dash • <span class="kbd">P</span> pause • <span class="kbd">R</span> restart • <span class="kbd">Esc</span> menu
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4>Profile</h4>
+          <div class="line" id="profileLine">Coins 0 • Level 1 • XP 0/100</div>
+          <div class="desc">
+            Coins buy permanent upgrades. Level boosts your run bonus and unlocks new hazards + power-ups.
+          </div>
+          <div class="badges" id="badgeRow"></div>
+        </div>
+
+        <div class="btnRow">
+          <button class="primary" id="btnPlay">Play</button>
+          <button id="btnShop">Upgrades</button>
+          <button id="btnAdv">Advancements</button>
+          <button id="btnSettings">Settings</button>
+          <button class="danger" id="btnWipe">Reset Save</button>
+        </div>
+
+        <div class="footerNote">
+          Tip: Dashing through a block is risky—your dash has i-frames, but only for a moment. Build combo by near-misses!
+        </div>
+      </div>
+
+      <div class="right" id="rightPane"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ====== Utilities ======
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const rand = (a,b)=>a+Math.random()*(b-a);
+  const randi = (a,b)=>Math.floor(rand(a,b+1));
+  const now = ()=>performance.now();
+  const fmt = (n)=>n.toLocaleString(undefined,{maximumFractionDigits:0});
+  const fmt1 = (n)=>n.toLocaleString(undefined,{maximumFractionDigits:1, minimumFractionDigits:1});
+
+  // ====== Save System ======
+  const SAVE_KEY = "dodgefall_save_v1";
+  const DEFAULT_SAVE = () => ({
+    coins: 0,
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
+    bestScore: 0,
+    bestTime: 0,
+    totalRuns: 0,
+    totalTime: 0,
+    upgrades: {
+      moveSpeed: 0,     // +% speed
+      dashCooldown: 0,  // -% cooldown
+      maxHp: 0,         // +hp
+      startingShield: 0,// +shield
+      coinBonus: 0,     // +% coin gain
+      luck: 0,          // + powerup chance
+      nearMiss: 0,      // + combo power
+      slowMo: 0,        // slowmo duration +%
+    },
+    advancements: {}, // id:true
+    settings: {
+      screenshake: 1,
+      particles: 1,
+      music: 1,
+      sfx: 1,
+      difficulty: 1, // 0 chill, 1 normal, 2 spicy
+      colorblind: 0
+    }
+  });
+
+  function loadSave(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return DEFAULT_SAVE();
+      const s = JSON.parse(raw);
+
+      // Merge with defaults (forward compatible)
+      const d = DEFAULT_SAVE();
+      const merged = structuredClone(d);
+      const deepMerge = (target, src) => {
+        for(const k in src){
+          if(src[k] && typeof src[k] === "object" && !Array.isArray(src[k])){
+            if(!target[k] || typeof target[k] !== "object") target[k] = {};
+            deepMerge(target[k], src[k]);
+          }else{
+            target[k] = src[k];
+          }
+        }
+      };
+      deepMerge(merged, s);
+      return merged;
+    }catch(e){
+      return DEFAULT_SAVE();
+    }
+  }
+  function save(){
+    localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    renderProfile();
+  }
+
+  let S = loadSave();
+
+  // ====== Advancements (Achievements) ======
+  const ADV = [
+    { id:"first_dodge", name:"First Dodge", desc:"Survive 10 seconds.", check: st => st.runTime >= 10 },
+    { id:"combo_10", name:"Combo x10", desc:"Reach combo 10.", check: st => st.combo >= 10 },
+    { id:"combo_25", name:"Combo x25", desc:"Reach combo 25.", check: st => st.combo >= 25 },
+    { id:"hazard_10", name:"Hazard 10", desc:"Reach hazard level 10.", check: st => st.hazard >= 10 },
+    { id:"hazard_20", name:"Hazard 20", desc:"Reach hazard level 20.", check: st => st.hazard >= 20 },
+    { id:"score_50k", name:"50K Club", desc:"Score 50,000 in a run.", check: st => st.score >= 50000 },
+    { id:"score_150k", name:"150K Legend", desc:"Score 150,000 in a run.", check: st => st.score >= 150000 },
+    { id:"collector", name:"Collector", desc:"Collect 15 power-ups in one run.", check: st => st.powerupsCollected >= 15 },
+    { id:"unstoppable", name:"Unstoppable", desc:"Survive 180 seconds.", check: st => st.runTime >= 180 },
+    { id:"no_touch_60", name:"Untouchable", desc:"Survive 60 seconds without taking damage.", check: st => st.noDamageTime >= 60 },
+    { id:"dash_master", name:"Dash Master", desc:"Use dash 50 times total.", check: st => (S.totalDashUses||0) >= 50, global:true },
+    { id:"rich", name:"Pocket Full", desc:"Have 10,000 coins saved.", check: st => S.coins >= 10000, global:true },
+  ];
+
+  function unlockAdv(id){
+    if(S.advancements[id]) return;
+    S.advancements[id] = true;
+    save();
+    const a = ADV.find(x=>x.id===id);
+    if(a) toast(`Advancement Unlocked`, `${a.name} — ${a.desc}`);
+    // small coin reward
+    const reward = 150 + Math.floor(S.level * 25);
+    S.coins += reward;
+    toast("Bonus Coins", `+${fmt(reward)} for unlocking an advancement!`);
+    save();
+  }
+
+  // ====== Audio (WebAudio) ======
+  let audioCtx = null;
+  function ensureAudio(){
+    if(audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  function beep(freq=440, dur=0.07, type="sine", gain=0.04){
+    if(!S.settings.sfx) return;
+    ensureAudio();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t);
+    o.stop(t+dur);
+  }
+  function thump(){
+    beep(90, 0.10, "square", 0.035);
+    beep(55, 0.12, "sine", 0.03);
+  }
+  function sparkle(){
+    beep(880, 0.05, "triangle", 0.035);
+    beep(1320, 0.04, "sine", 0.03);
+  }
+  function dangerBlip(){
+    beep(240, 0.06, "sawtooth", 0.03);
+  }
+
+  // ====== Canvas Setup ======
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  let W=0,H=0, DPR=1;
+
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio||1);
+    W = Math.floor(window.innerWidth * DPR);
+    H = Math.floor(window.innerHeight * DPR);
+    canvas.width = W;
+    canvas.height = H;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ====== Input ======
+  const keys = new Set();
+  const pressed = new Set();
+  window.addEventListener("keydown", (e)=>{
+    const k = e.key.toLowerCase();
+    if(!keys.has(k)) pressed.add(k);
+    keys.add(k);
+
+    if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key)) e.preventDefault();
+
+    if(k==="p"){ togglePause(); }
+    if(k==="r"){ if(state.mode==="game") restartRun(); }
+    if(k==="escape"){ toggleMenu(); }
+    if(k===" "){ if(state.mode==="game") tryDash(); }
+  });
+  window.addEventListener("keyup",(e)=>{
+    keys.delete(e.key.toLowerCase());
+  });
+
+  // Touch (simple)
+  let touchActive=false;
+  let touchX=0, touchY=0;
+  canvas.addEventListener("pointerdown",(e)=>{
+    touchActive=true;
+    touchX=e.clientX; touchY=e.clientY;
+    // tap right side = dash
+    if(e.clientX > window.innerWidth*0.66 && state.mode==="game") tryDash();
+    ensureAudio();
+  });
+  canvas.addEventListener("pointermove",(e)=>{
+    if(!touchActive) return;
+    touchX=e.clientX; touchY=e.clientY;
+  });
+  window.addEventListener("pointerup",()=>touchActive=false);
+
+  // ====== UI Elements ======
+  const overlay = document.getElementById("overlay");
+  const rightPane = document.getElementById("rightPane");
+  const runLine = document.getElementById("runLine");
+  const runSmall = document.getElementById("runSmall");
+  const plLine = document.getElementById("plLine");
+  const hpBar = document.getElementById("hpBar");
+  const dashBar = document.getElementById("dashBar");
+  const hazBar = document.getElementById("hazBar");
+  const statusTags = document.getElementById("statusTags");
+  const toastsEl = document.getElementById("toasts");
+  const profileLine = document.getElementById("profileLine");
+  const badgeRow = document.getElementById("badgeRow");
+
+  document.getElementById("btnPlay").onclick = ()=>{ startGame(); };
+  document.getElementById("btnShop").onclick = ()=>{ showShop(); };
+  document.getElementById("btnAdv").onclick = ()=>{ showAdvancements(); };
+  document.getElementById("btnSettings").onclick = ()=>{ showSettings(); };
+  document.getElementById("btnWipe").onclick = ()=>{
+    if(confirm("Reset all progress? This cannot be undone.")){
+      localStorage.removeItem(SAVE_KEY);
+      S = loadSave();
+      save();
+      toast("Save Reset", "Progress cleared. Fresh start!");
+      showHome();
+    }
+  };
+
+  function toast(title, body){
+    const div = document.createElement("div");
+    div.className="toast";
+    div.innerHTML = `<div class="tTitle">${title}</div><div class="tBody">${body}</div>`;
+    toastsEl.appendChild(div);
+    setTimeout(()=>{ div.style.opacity="0"; div.style.transform="translateY(4px)"; }, 2600);
+    setTimeout(()=>{ div.remove(); }, 3100);
+  }
+
+  function renderProfile(){
+    profileLine.textContent = `Coins ${fmt(S.coins)} • Level ${S.level} • XP ${fmt(S.xp)}/${fmt(S.xpToNext)} • Best ${fmt(S.bestScore)}`;
+    badgeRow.innerHTML = "";
+    const badges = [
+      {name:`Best Time ${fmt1(S.bestTime)}s`, on:true},
+      {name:`Runs ${fmt(S.totalRuns)}`, on:true},
+      {name:`Total Time ${fmt1(S.totalTime)}s`, on:true}
+    ];
+    for(const b of badges){
+      const el = document.createElement("div");
+      el.className = "badge unlocked";
+      el.textContent = b.name;
+      badgeRow.appendChild(el);
+    }
+  }
+
+  function toggleMenu(){
+    if(state.mode==="menu"){
+      // if we were paused in-game, resume
+      if(state.prevMode==="game"){ overlay.classList.remove("show"); state.mode="game"; state.paused=false; toast("Resume", "Back to the run."); }
+      return;
+    }
+    if(state.mode==="game"){
+      state.prevMode="game";
+      state.paused=true;
+      overlay.classList.add("show");
+      showHome(true);
+      state.mode="menu";
+      return;
+    }
+    // in gameover -> menu
+    overlay.classList.add("show");
+    showHome();
+    state.mode="menu";
+  }
+
+  function togglePause(){
+    if(state.mode!=="game") return;
+    state.paused = !state.paused;
+    toast(state.paused?"Paused":"Unpaused", state.paused?"Press P to resume.":"Good luck.");
+  }
+
+  function showHome(inRun=false){
+    renderProfile();
+    rightPane.innerHTML = `
+      <div class="grid">
+        <div class="card">
+          <h4>What’s New In This Run</h4>
+          <div class="line">• Multiple block types (normal, fast, heavy, splitter, drifter, seeker)\n• Wave events (Walls, Burst Rain, Spiral Drop)\n• Power-ups (Shield, Slow-Mo, Coin Rush, Phase, Magnet)\n• Combos from near-misses (higher score + coin gain)\n• Permanent upgrades + advancements</div>
+          <div class="desc">Near-miss a block to build combo. Higher combo increases score multiplier and coin drops.</div>
+        </div>
+        <div class="card">
+          <h4>Difficulty</h4>
+          <div class="desc">Chill = fewer events. Spicy = faster scaling + nastier blocks.</div>
+          <div class="btnRow">
+            <button id="dif0" ${S.settings.difficulty===0?'class="primary"':''}>Chill</button>
+            <button id="dif1" ${S.settings.difficulty===1?'class="primary"':''}>Normal</button>
+            <button id="dif2" ${S.settings.difficulty===2?'class="primary"':''}>Spicy</button>
+          </div>
+          <div class="divider"></div>
+          <div class="line">Best Score: ${fmt(S.bestScore)}\nBest Time: ${fmt1(S.bestTime)}s</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card">
+        <h4>Quick Tips</h4>
+        <div class="line">• Dash has short invulnerability frames.\n• Shield blocks one hit, then breaks.\n• Slow-Mo makes everything easier—save it for wave events.\n• Seeker blocks aim for your last known position.\n• Magnet pulls coins/power-ups to you.</div>
+      </div>
+    `;
+    rightPane.querySelector("#dif0").onclick=()=>{S.settings.difficulty=0; save(); showHome(inRun);}
+    rightPane.querySelector("#dif1").onclick=()=>{S.settings.difficulty=1; save(); showHome(inRun);}
+    rightPane.querySelector("#dif2").onclick=()=>{S.settings.difficulty=2; save(); showHome(inRun);}
+  }
+
+  function showShop(){
+    renderProfile();
+    const U = S.upgrades;
+    const items = [
+      {
+        key:"moveSpeed", title:"Boots: Move Speed", desc:"Move faster. Helps with tight gaps and wall events.",
+        base: 180, scale: 1.35, max: 10
+      },
+      {
+        key:"dashCooldown", title:"Capacitor: Dash Cooldown", desc:"Shorter dash cooldown (more escapes).",
+        base: 220, scale: 1.38, max: 10
+      },
+      {
+        key:"maxHp", title:"Reinforced Core: Max HP", desc:"More HP means more mistakes allowed.",
+        base: 200, scale: 1.34, max: 10
+      },
+      {
+        key:"startingShield", title:"Bubble Start: Starting Shield", desc:"Start each run with extra shield charges.",
+        base: 260, scale: 1.42, max: 6
+      },
+      {
+        key:"coinBonus", title:"Minted Luck: Coin Bonus", desc:"Earn more coins per run.",
+        base: 240, scale: 1.40, max: 10
+      },
+      {
+        key:"luck", title:"Lucky Signal: Power-up Chance", desc:"Power-ups spawn a bit more often.",
+        base: 260, scale: 1.41, max: 10
+      },
+      {
+        key:"nearMiss", title:"Adrenaline: Near-Miss Combo", desc:"Near-miss builds combo faster + higher multipliers.",
+        base: 280, scale: 1.45, max: 10
+      },
+      {
+        key:"slowMo", title:"Time Lattice: Slow-Mo Duration", desc:"Slow-Mo power-up lasts longer.",
+        base: 300, scale: 1.46, max: 8
+      }
+    ];
+
+    const buy = (it) => {
+      const lvl = U[it.key];
+      if(lvl >= it.max) return;
+      const cost = Math.floor(it.base * Math.pow(it.scale, lvl));
+      if(S.coins < cost){
+        dangerBlip();
+        toast("Not enough coins", `Need ${fmt(cost)} coins.`);
+        return;
+      }
+      S.coins -= cost;
+      U[it.key] += 1;
+      sparkle();
+      toast("Upgrade Purchased", `${it.title} is now level ${U[it.key]}.`);
+      save();
+      showShop();
+    };
+
+    rightPane.innerHTML = `
+      <div class="card">
+        <h4>Upgrades</h4>
+        <div class="desc">Permanent upgrades apply to all future runs. (Coins saved: <span style="color:var(--warn); font-family:var(--mono)">${fmt(S.coins)}</span>)</div>
+      </div>
+      <div class="divider"></div>
+      <div class="list" id="shopList"></div>
+      <div class="divider"></div>
+      <div class="card">
+        <h4>Upgrade Effects</h4>
+        <div class="line">Move Speed: +5% per level\nDash Cooldown: -6% per level\nMax HP: +8 per level\nStarting Shield: +1 shield per level\nCoin Bonus: +6% coins per level\nPower-up Chance: +5% per level\nNear-Miss Combo: +10% combo gain per level\nSlow-Mo Duration: +12% per level</div>
+      </div>
+    `;
+    const list = rightPane.querySelector("#shopList");
+    for(const it of items){
+      const lvl = U[it.key];
+      const cost = (lvl>=it.max) ? "MAX" : fmt(Math.floor(it.base * Math.pow(it.scale, lvl)));
+      const el = document.createElement("div");
+      el.className = "shopItem";
+      el.innerHTML = `
+        <div class="meta">
+          <div class="title">${it.title} <span class="muted">(Lv ${lvl}/${it.max})</span></div>
+          <div class="detail">${it.desc}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px">
+          <div class="price">${cost==="MAX" ? "MAXED" : cost+" coins"}</div>
+          <button ${lvl>=it.max ? 'disabled style="opacity:.55; cursor:not-allowed"' : ""} class="${lvl<it.max?'primary':''}" id="buy_${it.key}">${lvl>=it.max?"Maxed":"Buy"}</button>
+        </div>
+      `;
+      list.appendChild(el);
+      const b = el.querySelector(`#buy_${it.key}`);
+      if(b && lvl<it.max) b.onclick = ()=>buy(it);
+    }
+  }
+
+  function showAdvancements(){
+    renderProfile();
+    const unlocked = Object.keys(S.advancements).filter(k=>S.advancements[k]).length;
+    rightPane.innerHTML = `
+      <div class="card">
+        <h4>Advancements</h4>
+        <div class="desc">Unlocked: ${unlocked}/${ADV.length}. Unlocking grants bonus coins and bragging rights.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="list" id="advList"></div>
+    `;
+    const list = rightPane.querySelector("#advList");
+    for(const a of ADV){
+      const ok = !!S.advancements[a.id];
+      const el = document.createElement("div");
+      el.className = "shopItem";
+      el.innerHTML = `
+        <div class="meta">
+          <div class="title">${ok ? "✅" : "🔒"} ${a.name}</div>
+          <div class="detail">${a.desc}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px">
+          <div class="mini">${ok ? "Unlocked" : (a.global ? "Global" : "Run-based")}</div>
+          <div class="mini muted">${ok ? "Nice." : "Keep going."}</div>
+        </div>
+      `;
+      list.appendChild(el);
+    }
+  }
+
+  function showSettings(){
+    renderProfile();
+    rightPane.innerHTML = `
+      <div class="card">
+        <h4>Settings</h4>
+        <div class="desc">Tweak visuals/audio for your device. Settings save automatically.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="card">
+        <h4>Visual</h4>
+        <div class="toggleRow">
+          <label>Screenshake <span class="muted">(0–100)</span></label>
+          <input id="shake" type="range" min="0" max="100" value="${Math.round(S.settings.screenshake*100)}" />
+        </div>
+        <div class="toggleRow" style="margin-top:10px">
+          <label>Particles</label>
+          <button id="particles" class="${S.settings.particles?'primary':''}">${S.settings.particles?'On':'Off'}</button>
+        </div>
+        <div class="toggleRow" style="margin-top:10px">
+          <label>Colorblind-ish Mode <span class="muted">(stronger contrast)</span></label>
+          <button id="cb" class="${S.settings.colorblind?'primary':''}">${S.settings.colorblind?'On':'Off'}</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card">
+        <h4>Audio</h4>
+        <div class="toggleRow">
+          <label>SFX</label>
+          <button id="sfx" class="${S.settings.sfx?'primary':''}">${S.settings.sfx?'On':'Off'}</button>
+        </div>
+        <div class="toggleRow" style="margin-top:10px">
+          <label>Music <span class="muted">(simple ambient)</span></label>
+          <button id="music" class="${S.settings.music?'primary':''}">${S.settings.music?'On':'Off'}</button>
+        </div>
+        <div class="desc" style="margin-top:10px">Tip: click/tap once to allow audio in some browsers.</div>
+      </div>
+    `;
+    rightPane.querySelector("#shake").oninput = (e)=>{
+      S.settings.screenshake = Number(e.target.value)/100;
+      save();
+    };
+    rightPane.querySelector("#particles").onclick = ()=>{
+      S.settings.particles = S.settings.particles?0:1; save(); showSettings();
+    };
+    rightPane.querySelector("#cb").onclick = ()=>{
+      S.settings.colorblind = S.settings.colorblind?0:1; save(); showSettings();
+    };
+    rightPane.querySelector("#sfx").onclick = ()=>{
+      S.settings.sfx = S.settings.sfx?0:1; save(); showSettings();
+      beep(660,0.06,"triangle",0.03);
+    };
+    rightPane.querySelector("#music").onclick = ()=>{
+      S.settings.music = S.settings.music?0:1; save(); showSettings();
+    };
+  }
+
+  // ====== Game State ======
+  const state = {
+    mode: "menu", // menu | game | gameover
+    prevMode: null,
+    paused: false,
+    tLast: now(),
+    shake: 0,
+    shakeVel: 0
+  };
+
+  // Entities
+  const blocks = [];
+  const pickups = [];
+  const particles = [];
+  const stars = [];
+
+  // Player
+  const player = {
+    x: 0, y: 0,
+    r: 14,
+    vx: 0, vy: 0,
+    speed: 1,
+    hp: 100,
+    maxHp: 100,
+    shield: 0,
+    dash: {
+      cd: 1.25,
+      timer: 0,
+      active: 0,
+      dirx: 0, diry: 0,
+      iframes: 0,
+      energy: 1
+    },
+    effects: {
+      slow: 0,
+      coinrush: 0,
+      phase: 0,
+      magnet: 0,
+      scoreboost: 0
+    }
+  };
+
+  // Run stats
+  let run = null;
+
+  function newRun(){
+    const u = S.upgrades;
+    const diff = S.settings.difficulty;
+
+    const maxHp = 100 + u.maxHp*8;
+    player.maxHp = maxHp;
+    player.hp = maxHp;
+    player.shield = u.startingShield;
+    player.r = 14 * DPR;
+    player.x = W*0.5;
+    player.y = H*0.78;
+    player.vx = player.vy = 0;
+
+    player.speed = (1 + u.moveSpeed*0.05) * (diff===0?0.98: diff===2?1.03:1) * DPR;
+    player.dash.cd = 1.25 * (1 - u.dashCooldown*0.06);
+    player.dash.timer = 0;
+    player.dash.active = 0;
+    player.dash.iframes = 0;
+
+    for(const k in player.effects) player.effects[k]=0;
+
+    blocks.length = 0;
+    pickups.length = 0;
+    particles.length = 0;
+
+    run = {
+      score: 0,
+      coinsEarned: 0,
+      runTime: 0,
+      hazard: 1,
+      hazardProg: 0,
+      combo: 0,
+      comboMax: 0,
+      multiplier: 1,
+      nearMisses: 0,
+      dodges: 0,
+      hitsTaken: 0,
+      powerupsCollected: 0,
+      noDamageTime: 0,
+      lastHitT: 0,
+      spawnT: 0,
+      eventT: 8,
+      eventActive: null,
+      eventTimer: 0,
+      baseSpawn: 0.42,
+      coinDropChance: 0.12,
+      powerupChance: 0.08,
+      streak: 0,
+      justStarted: true
+    };
+
+    // stars background
+    stars.length = 0;
+    for(let i=0;i<140;i++){
+      stars.push({x:Math.random()*W, y:Math.random()*H, r:rand(0.5,2.1)*DPR, s:rand(10,40)*DPR, a:rand(0.08,0.22)});
+    }
+  }
+
+  function startGame(){
+    ensureAudio();
+    overlay.classList.remove("show");
+    state.mode="game";
+    state.paused=false;
+    newRun();
+    toast("Run Started", "Dodge, dash, and build combo with near-misses!");
+  }
+
+  function gameOver(){
+    state.mode="gameover";
+    state.paused=true;
+    overlay.classList.add("show");
+    state.mode="menu";
+
+    // finalize stats
+    S.totalRuns += 1;
+    S.totalTime += run.runTime;
+    S.bestScore = Math.max(S.bestScore, run.score|0);
+    S.bestTime = Math.max(S.bestTime, run.runTime);
+
+    // coins
+    const coinBonus = 1 + S.upgrades.coinBonus*0.06;
+    const levelBonus = 1 + (S.level-1)*0.02;
+    const diffBonus = S.settings.difficulty===0 ? 0.85 : (S.settings.difficulty===2 ? 1.15 : 1.0);
+    const comboBonus = 1 + Math.min(0.50, run.comboMax * 0.01);
+    const coins = Math.floor(run.coinsEarned * coinBonus * levelBonus * diffBonus * comboBonus);
+    S.coins += coins;
+
+    // XP
+    const xpGain = Math.floor( (run.runTime*2.2) + (run.score/150) + (run.hazard*6) + (run.powerupsCollected*10) );
+    S.xp += xpGain;
+
+    // Level up
+    let leveled = 0;
+    while(S.xp >= S.xpToNext){
+      S.xp -= S.xpToNext;
+      S.level += 1;
+      S.xpToNext = Math.floor(S.xpToNext * 1.18 + 40);
+      leveled++;
+      // level-up coin reward
+      S.coins += 120 + S.level*18;
+    }
+    save();
+
+    // advancements check (global + final)
+    checkAdvancements(true);
+
+    // Show summary
+    rightPane.innerHTML = `
+      <div class="card">
+        <h4>Run Complete</h4>
+        <div class="line">Score: ${fmt(run.score|0)}\nTime: ${fmt1(run.runTime)}s\nHazard: ${run.hazard}\nCombo Max: ${run.comboMax}\nPower-ups: ${run.powerupsCollected}\nHits Taken: ${run.hitsTaken}</div>
+        <div class="desc">Coins Earned: <span style="color:var(--warn); font-family:var(--mono)">${fmt(coins)}</span> • XP Gained: <span style="color:var(--accent); font-family:var(--mono)">${fmt(xpGain)}</span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="grid">
+        <div class="card">
+          <h4>Next Moves</h4>
+          <div class="line">• Spend coins on upgrades\n• Try a higher difficulty\n• Chase advancements for bonus coins</div>
+          <div class="btnRow">
+            <button class="primary" id="again">Play Again</button>
+            <button id="shop">Upgrades</button>
+            <button id="adv">Advancements</button>
+          </div>
+        </div>
+        <div class="card">
+          <h4>Tip</h4>
+          <div class="desc">If you keep getting clipped during Wall events, upgrade Move Speed and Dash Cooldown. For survival, Max HP + Starting Shield is huge.</div>
+        </div>
+      </div>
+    `;
+    rightPane.querySelector("#again").onclick = ()=>startGame();
+    rightPane.querySelector("#shop").onclick = ()=>showShop();
+    rightPane.querySelector("#adv").onclick = ()=>showAdvancements();
+
+    toast("Run Ended", `+${fmt(coins)} coins, +${fmt(xpGain)} XP${leveled?` • Level Up x${leveled}!`:""}`);
+    thump();
+  }
+
+  function restartRun(){
+    newRun();
+    toast("Restarted", "Fresh run. Good luck!");
+  }
+
+  // ====== Spawning & Patterns ======
+  function difficultyScale(){
+    const d = S.settings.difficulty;
+    return d===0 ? 0.85 : d===2 ? 1.18 : 1.0;
+  }
+
+  function hazardTargetTime(){
+    // how fast hazard rises (seconds per hazard)
+    const d = S.settings.difficulty;
+    const base = 10.8;
+    return base / (1 + (S.level-1)*0.02) / (d===0?0.85:d===2?1.25:1);
+  }
+
+  function blockTypeWeights(h){
+    // weights shift as hazard increases
+    const w = [];
+    w.push(["normal",  50]);
+    w.push(["fast",    Math.min(30,  5 + h*1.2)]);
+    w.push(["heavy",   Math.min(25,  3 + h*0.9)]);
+    w.push(["splitter",Math.min(22,  (h>6?2:0) + (h-6)*1.0)]);
+    w.push(["drifter", Math.min(26,  (h>8?2:0) + (h-8)*1.2)]);
+    w.push(["seeker",  Math.min(18,  (h>12?1:0) + (h-12)*0.9)]);
+    return w;
+  }
+
+  function pickWeighted(arr){
+    let total=0;
+    for(const [,w] of arr) total += Math.max(0,w);
+    let r = Math.random()*total;
+    for(const [k,w] of arr){
+      r -= Math.max(0,w);
+      if(r<=0) return k;
+    }
+    return arr[0][0];
+  }
+
+  function spawnBlock(kind=null, opts={}){
+    const h = run.hazard;
+    const diff = difficultyScale();
+
+    const type = kind || pickWeighted(blockTypeWeights(h));
+
+    const sizeBase = lerp(18, 44, Math.min(1, h/28));
+    let w = rand(sizeBase*0.8, sizeBase*1.3) * DPR;
+    let hh = rand(sizeBase*0.8, sizeBase*1.4) * DPR;
+    if(type==="heavy"){ w*=1.18; hh*=1.18; }
+    if(type==="fast"){ w*=0.92; hh*=0.92; }
+    if(type==="splitter"){ w*=1.05; hh*=1.05; }
+    if(type==="seeker"){ w*=0.95; hh*=0.95; }
+
+    const x = (opts.x!=null) ? opts.x : rand(w*0.7, W-w*0.7);
+    const y = (opts.y!=null) ? opts.y : -hh - rand(10,40)*DPR;
+
+    let speed = lerp(120, 560, Math.min(1, h/30)) * diff;
+    speed *= rand(0.86, 1.22);
+
+    if(type==="fast") speed *= 1.28;
+    if(type==="heavy") speed *= 0.86;
+    if(type==="drifter") speed *= 0.95;
+    if(type==="seeker") speed *= 1.05;
+
+    const b = {
+      type,
+      x, y, w, h: hh,
+      vx: 0,
+      vy: speed * DPR,
+      rot: rand(-1,1)*0.4,
+      t: 0,
+      alive: true,
+      hp: type==="heavy" ? 2 : 1,
+      split: (type==="splitter"),
+      drift: (type==="drifter"),
+      seeker: (type==="seeker"),
+      targetX: player.x,
+      targetY: player.y,
+      glow: rand(0.7,1.0),
+      nearMissed: false
+    };
+
+    if(b.drift){
+      b.vx = rand(-90, 90) * DPR * diff;
+    }
+    if(b.seeker){
+      b.targetX = player.x + rand(-40,40)*DPR;
+      b.vx = clamp((b.targetX - b.x)*0.6, -220*DPR, 220*DPR) * diff;
+    }
+
+    blocks.push(b);
+  }
+
+  function spawnPickup(type=null, x=null, y=null){
+    const kinds = ["shield","slow","coinrush","phase","magnet"];
+    const t = type || kinds[randi(0,kinds.length-1)];
+    pickups.push({
+      type: t,
+      x: x!=null?x:rand(40*DPR, W-40*DPR),
+      y: y!=null?y:-40*DPR,
+      r: 10*DPR,
+      vy: rand(120, 220)*DPR,
+      t: 0,
+      alive: true
+    });
+  }
+
+  // Wave events: happens periodically, adds fun difficulty spikes
+  function startEvent(){
+    const h = run.hazard;
+    const diff = difficultyScale();
+    const pool = [];
+
+    pool.push("wall");
+    if(h>=5) pool.push("burst");
+    if(h>=9) pool.push("spiral");
+    if(h>=13) pool.push("squeeze");
+    if(h>=18) pool.push("meteor");
+
+    const ev = pool[randi(0,pool.length-1)];
+    run.eventActive = ev;
+    run.eventTimer = 0;
+
+    if(ev==="wall") toast("Wave Event: WALL", "A falling wall with a gap. Move fast!");
+    if(ev==="burst") toast("Wave Event: BURST RAIN", "Short intense spawn burst.");
+    if(ev==="spiral") toast("Wave Event: SPIRAL DROP", "Blocks drift in a spiral pattern.");
+    if(ev==="squeeze") toast("Wave Event: SQUEEZE", "Gaps get tighter. Dash smart.");
+    if(ev==="meteor") toast("Wave Event: METEOR STORM", "Heavy blocks incoming!");
+    dangerBlip();
+
+    // schedule end
+    run.eventT = rand(18, 26) / diff;
+  }
+
+  function runEvent(dt){
+    const ev = run.eventActive;
+    if(!ev) return;
+
+    run.eventTimer += dt;
+
+    if(ev==="wall"){
+      // every 1.2s spawn wall with gap
+      const every = 1.2 / difficultyScale();
+      if(run.eventTimer < 7.5){
+        if((run.eventTimer-dt) % every > run.eventTimer % every){
+          const gapW = lerp(150, 90, Math.min(1, run.hazard/25)) * DPR;
+          const gapX = rand(50*DPR, W-50*DPR-gapW);
+          const wallH = rand(34, 52)*DPR;
+          // left segment
+          spawnBlock("heavy",{x:(gapX/2), y:-wallH,});
+          blocks[blocks.length-1].w = gapX; blocks[blocks.length-1].h = wallH; blocks[blocks.length-1].vy *= 0.95;
+          // right segment
+          const rx = gapX + gapW + (W-(gapX+gapW))/2;
+          spawnBlock("heavy",{x:rx, y:-wallH});
+          blocks[blocks.length-1].w = W-(gapX+gapW); blocks[blocks.length-1].h = wallH; blocks[blocks.length-1].vy *= 0.95;
+        }
+      }else{
+        run.eventActive = null;
+        toast("Event Cleared", "Back to normal chaos.");
+      }
+    }
+
+    if(ev==="burst"){
+      if(run.eventTimer < 6.0){
+        // spawn lots quickly
+        const burstRate = 0.08 / difficultyScale();
+        run.spawnT -= dt;
+        while(run.spawnT <= 0){
+          run.spawnT += burstRate;
+          spawnBlock(null);
+        }
+      }else{
+        run.eventActive = null;
+        toast("Event Cleared", "You survived the burst!");
+      }
+    }
+
+    if(ev==="spiral"){
+      if(run.eventTimer < 8.0){
+        const every = 0.12 / difficultyScale();
+        run.spawnT -= dt;
+        while(run.spawnT <= 0){
+          run.spawnT += every;
+          const cx = W*0.5 + Math.sin(run.eventTimer*2.2)*W*0.22;
+          const x = clamp(cx + Math.sin(run.eventTimer*5 + Math.random()*0.5)*W*0.18, 40*DPR, W-40*DPR);
+          spawnBlock("drifter",{x});
+          const b = blocks[blocks.length-1];
+          b.vx += Math.cos(run.eventTimer*6)*140*DPR;
+          b.vy *= 0.95;
+        }
+      }else{
+        run.eventActive = null;
+        toast("Event Cleared", "Spiral ended.");
+      }
+    }
+
+    if(ev==="squeeze"){
+      if(run.eventTimer < 7.0){
+        const every = 0.25 / difficultyScale();
+        run.spawnT -= dt;
+        while(run.spawnT <= 0){
+          run.spawnT += every;
+          // tighter blocks + seekers
+          spawnBlock(Math.random()<0.5 ? "seeker":"fast");
+        }
+      }else{
+        run.eventActive = null;
+        toast("Event Cleared", "Breathing room restored.");
+      }
+    }
+
+    if(ev==="meteor"){
+      if(run.eventTimer < 7.5){
+        const every = 0.22 / difficultyScale();
+        run.spawnT -= dt;
+        while(run.spawnT <= 0){
+          run.spawnT += every;
+          spawnBlock("heavy");
+          if(Math.random()<0.12) spawnBlock("splitter");
+        }
+      }else{
+        run.eventActive = null;
+        toast("Event Cleared", "Meteor storm faded.");
+      }
+    }
+  }
+
+  // ====== Particles ======
+  function addParticles(x,y,n=10, sp=220, life=0.45, hue="accent"){
+    if(!S.settings.particles) return;
+    for(let i=0;i<n;i++){
+      const a = rand(0,Math.PI*2);
+      const s = rand(sp*0.25, sp)*DPR;
+      particles.push({
+        x,y,
+        vx: Math.cos(a)*s,
+        vy: Math.sin(a)*s,
+        r: rand(1.3,3.2)*DPR,
+        life: rand(life*0.6, life*1.1),
+        t: 0,
+        hue
+      });
+    }
+  }
+
+  // ====== Collision ======
+  function rectCircleColl(rx,ry,rw,rh,cx,cy,cr){
+    const px = clamp(cx, rx-rw/2, rx+rw/2);
+    const py = clamp(cy, ry-rh/2, ry+rh/2);
+    const dx = cx-px, dy=cy-py;
+    return dx*dx+dy*dy <= cr*cr;
+  }
+
+  function tryDash(){
+    if(player.dash.timer>0 || player.dash.active>0) return;
+    // direction from input; if none, dash upward slightly
+    let dx=0, dy=0;
+    if(keys.has("a")||keys.has("arrowleft")) dx -= 1;
+    if(keys.has("d")||keys.has("arrowright")) dx += 1;
+    if(keys.has("w")||keys.has("arrowup")) dy -= 1;
+    if(keys.has("s")||keys.has("arrowdown")) dy += 1;
+
+    if(touchActive){
+      // aim toward touch point
+      const tx = touchX*DPR, ty = touchY*DPR;
+      dx = tx - player.x; dy = ty - player.y;
+    }
+
+    const len = Math.hypot(dx,dy) || 1;
+    dx/=len; dy/=len;
+
+    player.dash.active = 0.14;            // dash duration
+    player.dash.iframes = 0.18;           // invuln duration
+    player.dash.dirx = dx;
+    player.dash.diry = dy;
+    player.dash.timer = player.dash.cd;   // cooldown starts
+    (S.totalDashUses = (S.totalDashUses||0) + 1);
+    addParticles(player.x, player.y, 14, 320, 0.35, "dash");
+    beep(520,0.06,"triangle",0.04);
+    state.shakeVel += 7 * S.settings.screenshake;
+  }
+
+  function takeHit(dmg=18){
+    if(player.effects.phase>0) return; // intangible
+    if(player.dash.iframes>0) return;  // dash i-frames
+
+    if(player.shield>0){
+      player.shield -= 1;
+      addParticles(player.x, player.y, 18, 260, 0.5, "shield");
+      sparkle();
+      toast("Shield Hit", "Shield absorbed the damage.");
+      state.shakeVel += 10 * S.settings.screenshake;
+      run.hitsTaken += 1;
+      run.lastHitT = run.runTime;
+      run.noDamageTime = 0;
+      return;
+    }
+
+    player.hp -= dmg;
+    run.hitsTaken += 1;
+    run.lastHitT = run.runTime;
+    run.noDamageTime = 0;
+
+    addParticles(player.x, player.y, 24, 340, 0.55, "hurt");
+    thump();
+    state.shakeVel += 16 * S.settings.screenshake;
+
+    // combo penalty
+    run.combo = Math.max(0, Math.floor(run.combo*0.55));
+    if(player.hp<=0){
+      player.hp = 0;
+      gameOver();
+    }else{
+      toast("Hit!", `-${dmg} HP • Combo dropped.`);
+    }
+  }
+
+  // ====== Power-ups ======
+  function applyPickup(p){
+    run.powerupsCollected++;
+    sparkle();
+    addParticles(p.x, p.y, 18, 280, 0.5, "good");
+
+    switch(p.type){
+      case "shield":
+        player.shield += 1;
+        toast("Power-up: Shield", "Blocks one hit.");
+        break;
+      case "slow":
+        player.effects.slow = Math.max(player.effects.slow, 4.0 * (1 + S.upgrades.slowMo*0.12));
+        toast("Power-up: Slow-Mo", "Time bends. Move carefully.");
+        break;
+      case "coinrush":
+        player.effects.coinrush = Math.max(player.effects.coinrush, 6.0);
+        toast("Power-up: Coin Rush", "More coins drop for a bit.");
+        break;
+      case "phase":
+        player.effects.phase = Math.max(player.effects.phase, 2.6);
+        toast("Power-up: Phase", "You can pass through blocks briefly.");
+        break;
+      case "magnet":
+        player.effects.magnet = Math.max(player.effects.magnet, 7.0);
+        toast("Power-up: Magnet", "Coins/power-ups drift toward you.");
+        break;
+    }
+  }
+
+  // ====== Scoring + Combo ======
+  function updateMultiplier(){
+    const nearBoost = 1 + S.upgrades.nearMiss*0.10;
+    const combo = run.combo;
+    run.multiplier = 1 + Math.min(2.25, combo*0.06*nearBoost);
+    if(player.effects.scoreboost>0) run.multiplier *= 1.35;
+  }
+
+  function addScore(base){
+    run.score += base * run.multiplier;
+  }
+
+  function addCoin(){
+    run.coinsEarned += 1;
+  }
+
+  // ====== Main Update/Draw ======
+  function update(dt){
+    if(state.mode!=="game") return;
+    if(state.paused) return;
+
+    // time effects
+    let timeScale = 1.0;
+    if(player.effects.slow>0) timeScale *= 0.55;
+    dt *= timeScale;
+
+    run.runTime += dt;
+    run.noDamageTime = Math.min(run.noDamageTime + dt, 9999);
+
+    // hazard progression
+    run.hazardProg += dt;
+    const per = hazardTargetTime();
+    if(run.hazardProg >= per){
+      run.hazardProg -= per;
+      run.hazard += 1;
+      toast("Hazard Up", `Hazard level is now ${run.hazard}.`);
+      beep(680,0.05,"sine",0.03);
+    }
+
+    // spawn timing (skip if event burst uses its own)
+    if(!run.eventActive || run.eventActive==="wall"){
+      // base spawn rate scales with hazard and difficulty
+      const diff = difficultyScale();
+      const base = lerp(0.46, 0.16, Math.min(1, run.hazard/28)) / diff;
+      const levelBoost = 1 / (1 + (S.level-1)*0.015);
+      const spawnRate = base * levelBoost;
+
+      run.spawnT -= dt;
+      while(run.spawnT <= 0){
+        run.spawnT += spawnRate;
+        spawnBlock(null);
+        // extra chance for second block at higher hazard
+        if(run.hazard>10 && Math.random() < 0.08*diff) spawnBlock(null);
+      }
+    }
+
+    // event scheduling
+    run.eventT -= dt;
+    if(run.eventT <= 0 && !run.eventActive){
+      startEvent();
+    }
+    runEvent(dt);
+
+    // pickups spawning
+    const luck = 1 + S.upgrades.luck*0.05;
+    const pChance = (run.powerupChance * luck) * (run.hazard<4?0.65:1);
+    if(Math.random() < pChance * dt){
+      spawnPickup();
+    }
+
+    // player movement
+    const accel = 520 * player.speed;
+    const friction = 0.86;
+    let ax=0, ay=0;
+    if(keys.has("a")||keys.has("arrowleft")) ax -= 1;
+    if(keys.has("d")||keys.has("arrowright")) ax += 1;
+    if(keys.has("w")||keys.has("arrowup")) ay -= 1;
+    if(keys.has("s")||keys.has("arrowdown")) ay += 1;
+
+    if(touchActive){
+      // move toward touch point smoothly (left 2/3 of screen)
+      if(touchX < window.innerWidth*0.66){
+        const tx = touchX*DPR, ty = touchY*DPR;
+        ax = clamp((tx - player.x)/180, -1, 1);
+        ay = clamp((ty - player.y)/180, -1, 1);
+      }
+    }
+
+    const len = Math.hypot(ax,ay);
+    if(len>1){ ax/=len; ay/=len; }
+
+    player.vx = (player.vx * friction) + ax*accel*dt;
+    player.vy = (player.vy * friction) + ay*accel*dt;
+
+    // dash
+    player.dash.timer = Math.max(0, player.dash.timer - dt);
+    player.dash.active = Math.max(0, player.dash.active - dt);
+    player.dash.iframes = Math.max(0, player.dash.iframes - dt);
+
+    if(player.dash.active > 0){
+      const dashSp = 1600 * DPR;
+      player.vx = player.dash.dirx * dashSp;
+      player.vy = player.dash.diry * dashSp;
+      addParticles(player.x, player.y, 2, 160, 0.22, "dash");
+    }
+
+    player.x += player.vx*dt;
+    player.y += player.vy*dt;
+
+    // keep in bounds
+    const margin = 18*DPR;
+    player.x = clamp(player.x, margin, W-margin);
+    player.y = clamp(player.y, margin, H-margin);
+
+    // update effects
+    for(const k in player.effects){
+      player.effects[k] = Math.max(0, player.effects[k] - dt);
+    }
+
+    // blocks update
+    for(const b of blocks){
+      if(!b.alive) continue;
+      b.t += dt;
+
+      // motion
+      b.x += (b.vx||0) * dt;
+      b.y += b.vy * dt;
+
+      // seeker retarget occasionally
+      if(b.seeker && b.t>0.35 && (b.t % 0.6) < dt){
+        b.targetX = player.x + rand(-40,40)*DPR;
+        b.vx = clamp((b.targetX - b.x)*0.65, -260*DPR, 260*DPR) * difficultyScale();
+      }
+
+      // drift bounce
+      if(b.drift){
+        if(b.x < b.w*0.5 || b.x > W - b.w*0.5){
+          b.vx *= -1;
+        }
+      }
+
+      // offscreen cleanup
+      if(b.y - b.h*0.5 > H + 120*DPR){
+        b.alive=false;
+        run.dodges += 1;
+        addScore(18 + run.hazard*0.7);
+        // coin drop
+        const baseCoinChance = run.coinDropChance * (player.effects.coinrush>0 ? 2.0 : 1.0);
+        if(Math.random() < baseCoinChance){
+          addCoin();
+          // small sparkle trail
+          addParticles(b.x, H-20*DPR, 4, 120, 0.35, "coin");
+        }
+      }
+
+      // collision
+      if(b.alive){
+        if(rectCircleColl(b.x,b.y,b.w,b.h, player.x, player.y, player.r)){
+          // if phasing or i-frames, "ghost through" but still score a cool effect
+          if(player.effects.phase>0 || player.dash.iframes>0){
+            b.alive=false;
+            addParticles(player.x, player.y, 12, 260, 0.35, "phase");
+            addScore(40 + run.hazard*1.1);
+            continue;
+          }
+
+          // hit
+          b.alive=false;
+          takeHit(b.type==="heavy" ? 26 : b.type==="fast" ? 20 : 18);
+
+          // splitter breaks into 2 smaller blocks on death/hit
+          if(b.split){
+            for(let i=0;i<2;i++){
+              const nb = {
+                type:"fast",
+                x: b.x + rand(-18,18)*DPR,
+                y: b.y + rand(-12,12)*DPR,
+                w: b.w*0.55,
+                h: b.h*0.55,
+                vx: rand(-120,120)*DPR,
+                vy: b.vy*1.15,
+                rot: rand(-1,1)*0.6,
+                t: 0,
+                alive:true,
+                hp:1,
+                split:false,
+                drift:false,
+                seeker:false,
+                targetX:0, targetY:0,
+                glow: b.glow,
+                nearMissed:false
+              };
+              blocks.push(nb);
+            }
+          }
+          continue;
+        }
+
+        // near-miss detection (close but not collision)
+        const nx = clamp(player.x, b.x-b.w/2, b.x+b.w/2);
+        const ny = clamp(player.y, b.y-b.h/2, b.y+b.h/2);
+        const d2 = (player.x-nx)**2 + (player.y-ny)**2;
+        const nearR = (player.r + 18*DPR);
+        if(!b.nearMissed && d2 <= nearR*nearR){
+          b.nearMissed = true;
+          run.nearMisses += 1;
+          // combo increase scales
+          const gain = 1 + Math.floor( (run.hazard/7) );
+          const boost = 1 + S.upgrades.nearMiss*0.10;
+          run.combo += Math.max(1, Math.floor(gain * boost));
+          run.comboMax = Math.max(run.comboMax, run.combo);
+          addScore(28 + run.hazard*1.0);
+          addParticles(player.x, player.y, 10, 200, 0.35, "near");
+          beep(980,0.03,"sine",0.02);
+        }
+      }
+    }
+
+    // pickups update + magnet
+    for(const p of pickups){
+      if(!p.alive) continue;
+      p.t += dt;
+
+      // magnet effect
+      if(player.effects.magnet>0){
+        const dx = player.x - p.x;
+        const dy = player.y - p.y;
+        const dist = Math.hypot(dx,dy);
+        if(dist < 360*DPR){
+          const pull = lerp(0, 820*DPR, 1 - dist/(360*DPR));
+          p.x += (dx/(dist||1))*pull*dt;
+          p.y += (dy/(dist||1))*pull*dt;
+        }
+      }
+
+      p.y += p.vy*dt;
+      if(p.y - p.r > H + 80*DPR) p.alive=false;
+
+      const dx = player.x - p.x;
+      const dy = player.y - p.y;
+      const rr = player.r + p.r;
+      if(dx*dx + dy*dy <= rr*rr){
+        p.alive=false;
+        applyPickup(p);
+      }
+    }
+
+    // particles update
+    for(const prt of particles){
+      prt.t += dt;
+      prt.x += prt.vx*dt;
+      prt.y += prt.vy*dt;
+      prt.vx *= Math.pow(0.08, dt);
+      prt.vy *= Math.pow(0.08, dt);
+    }
+    // cleanup
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      if(p.t >= p.life) particles.splice(i,1);
+    }
+    for(let i=blocks.length-1;i>=0;i--) if(!blocks[i].alive) blocks.splice(i,1);
+    for(let i=pickups.length-1;i>=0;i--) if(!pickups[i].alive) pickups.splice(i,1);
+
+    // score trickle (survival)
+    addScore(12*dt + run.hazard*1.1*dt);
+
+    // multiplier
+    updateMultiplier();
+
+    // combo decay if no near misses recently
+    if(run.combo>0){
+      // decays slowly; stronger at higher hazard
+      const decay = (0.14 + run.hazard*0.004) * dt;
+      run.combo = Math.max(0, run.combo - decay);
+      run.comboMax = Math.max(run.comboMax, run.combo);
+    }
+
+    // check advancements periodically
+    if((run.runTime % 1.0) < dt) checkAdvancements(false);
+  }
+
+  function checkAdvancements(force){
+    if(!run && !force) return;
+    const st = run || {runTime:0, combo:0, hazard:0, score:0, powerupsCollected:0, noDamageTime:0};
+    for(const a of ADV){
+      if(S.advancements[a.id]) continue;
+      if(a.global){
+        if(a.check(st)) unlockAdv(a.id);
+      }else{
+        if(run && a.check(st)) unlockAdv(a.id);
+      }
+    }
+  }
+
+  // ====== Drawing ======
+  function colorFor(kind){
+    const cb = S.settings.colorblind;
+    if(kind==="good") return cb ? "rgba(255,255,255,.95)" : "rgba(77,255,136,.95)";
+    if(kind==="danger") return cb ? "rgba(255,210,77,.95)" : "rgba(255,77,109,.95)";
+    if(kind==="accent") return "rgba(124,246,255,.95)";
+    if(kind==="accent2") return "rgba(199,125,255,.95)";
+    if(kind==="coin") return "rgba(255,210,77,.95)";
+    if(kind==="dash") return "rgba(199,125,255,.95)";
+    if(kind==="shield") return "rgba(124,246,255,.95)";
+    if(kind==="hurt") return "rgba(255,77,109,.95)";
+    if(kind==="near") return "rgba(124,246,255,.95)";
+    if(kind==="phase") return "rgba(199,125,255,.95)";
+    return "rgba(255,255,255,.85)";
+  }
+
+  function draw(){
+    const t = now();
+    const dt = Math.min(0.033, (t - state.tLast) / 1000);
+    state.tLast = t;
+
+    update(dt);
+
+    // shake
+    state.shakeVel *= Math.pow(0.05, dt);
+    state.shake = lerp(state.shake, state.shakeVel, 0.1);
+    const shakeAmt = state.shake * 4 * DPR;
+
+    let ox = 0, oy = 0;
+    if(S.settings.screenshake>0 && shakeAmt>0.001){
+      ox = (Math.random()*2-1)*shakeAmt;
+      oy = (Math.random()*2-1)*shakeAmt;
+    }
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,W,H);
+
+    // background
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0,0,W,H);
+
+    // stars
+    ctx.save();
+    ctx.translate(ox*0.35, oy*0.35);
+    for(const s of stars){
+      s.y += s.s * dt * (player.effects.slow>0?0.6:1.0);
+      if(s.y > H+10*DPR){ s.y = -10*DPR; s.x = Math.random()*W; }
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // world transform
+    ctx.save();
+    ctx.translate(ox, oy);
+
+    // subtle vignette glow
+    const grd = ctx.createRadialGradient(W*0.5,H*0.55, 50*DPR, W*0.5,H*0.55, Math.max(W,H)*0.7);
+    grd.addColorStop(0, "rgba(124,246,255,.06)");
+    grd.addColorStop(1, "rgba(0,0,0,.15)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,W,H);
+
+    // blocks
+    for(const b of blocks){
+      const alpha = 0.96;
+      const danger = (b.type==="heavy" || b.type==="fast" || b.type==="seeker") ? 1 : 0;
+      const baseCol = danger ? "danger" : "accent";
+      const col = colorFor(baseCol);
+
+      // glow
+      ctx.save();
+      ctx.globalAlpha = alpha * (0.35 + b.glow*0.25);
+      ctx.shadowBlur = 18*DPR;
+      ctx.shadowColor = col;
+      ctx.fillStyle = col;
+      roundRect(ctx, b.x-b.w/2, b.y-b.h/2, b.w, b.h, 6*DPR);
+      ctx.fill();
+      ctx.restore();
+
+      // body
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "rgba(255,255,255,.04)";
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2*DPR;
+      roundRect(ctx, b.x-b.w/2, b.y-b.h/2, b.w, b.h, 6*DPR);
+      ctx.fill();
+      ctx.stroke();
+
+      // type marks
+      ctx.globalAlpha = 0.55;
+      ctx.font = `${12*DPR}px var(--mono)`;
+      ctx.fillStyle = col;
+      let mark = "▦";
+      if(b.type==="fast") mark="≫";
+      if(b.type==="heavy") mark="▣";
+      if(b.type==="splitter") mark="✶";
+      if(b.type==="drifter") mark="⇄";
+      if(b.type==="seeker") mark="◎";
+      ctx.fillText(mark, b.x - 6*DPR, b.y + 5*DPR);
+      ctx.restore();
+    }
+
+    // pickups
+    for(const p of pickups){
+      let c="good";
+      if(p.type==="coinrush") c="coin";
+      if(p.type==="phase") c="accent2";
+      if(p.type==="slow") c="accent";
+      if(p.type==="magnet") c="warn";
+      if(p.type==="shield") c="good";
+
+      const col = colorFor(c);
+
+      ctx.save();
+      ctx.shadowBlur = 18*DPR;
+      ctx.shadowColor = col;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r*1.15, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2*DPR;
+      ctx.fillStyle = "rgba(255,255,255,.05)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = col;
+      ctx.font = `${12*DPR}px var(--mono)`;
+      const icon = p.type==="shield" ? "S" :
+                   p.type==="slow" ? "T" :
+                   p.type==="coinrush" ? "$" :
+                   p.type==="phase" ? "Ø" : "M";
+      ctx.fillText(icon, p.x-4*DPR, p.y+4*DPR);
+      ctx.restore();
+    }
+
+    // particles
+    for(const p of particles){
+      const col = colorFor(p.hue==="dash"?"dash": p.hue==="coin"?"coin": p.hue==="hurt"?"danger": p.hue==="good"?"good": p.hue);
+      const a = 1 - (p.t/p.life);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // player
+    if(state.mode==="game"){
+      const pr = player.r;
+      const phase = player.effects.phase>0;
+      const col = phase ? colorFor("accent2") : colorFor("accent");
+      const danger = player.hp/player.maxHp < 0.33;
+
+      // aura
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.shadowBlur = 26*DPR;
+      ctx.shadowColor = col;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, pr*1.35, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      // body
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = "rgba(255,255,255,.06)";
+      ctx.strokeStyle = danger ? colorFor("danger") : col;
+      ctx.lineWidth = 2*DPR;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, pr, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      // dash indicator wedge
+      const dashReady = (player.dash.timer<=0);
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = dashReady ? colorFor("dash") : "rgba(255,255,255,.20)";
+      ctx.lineWidth = 3*DPR;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, pr+6*DPR, -Math.PI/2, -Math.PI/2 + Math.PI*2 * (1 - (player.dash.timer/player.dash.cd)));
+      ctx.stroke();
+
+      // shield ring
+      if(player.shield>0){
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = colorFor("shield");
+        ctx.lineWidth = (2 + Math.min(3,player.shield))*DPR;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, pr+10*DPR, 0, Math.PI*2);
+        ctx.stroke();
+      }
+
+      // phase visual
+      if(phase){
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = colorFor("accent2");
+        ctx.lineWidth = 2*DPR;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, pr+14*DPR + Math.sin(run.runTime*10)*2*DPR, 0, Math.PI*2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    // UI updates
+    if(state.mode==="game"){
+      const score = run.score|0;
+      runLine.textContent = `Score ${fmt(score)} • ${fmt1(run.runTime)}s • x${fmt1(run.multiplier)}`;
+      runSmall.textContent = `Hazard ${run.hazard} • Coins +${fmt(run.coinsEarned)} • Combo ${Math.floor(run.combo)}`;
+      plLine.textContent = `HP ${Math.ceil(player.hp)}/${player.maxHp} • Shield ${player.shield} • ${player.dash.timer<=0?"Dash Ready":"Dash Cooldown"}`;
+
+      hpBar.style.width = `${clamp((player.hp/player.maxHp)*100,0,100)}%`;
+      dashBar.style.width = `${clamp((1 - (player.dash.timer/player.dash.cd))*100,0,100)}%`;
+      hazBar.style.width = `${clamp((run.hazardProg/hazardTargetTime())*100,0,100)}%`;
+
+      statusTags.innerHTML = "";
+      const tags = [];
+      if(player.effects.slow>0) tags.push({t:`Slow-Mo ${fmt1(player.effects.slow)}s`, c:"warn"});
+      if(player.effects.coinrush>0) tags.push({t:`Coin Rush ${fmt1(player.effects.coinrush)}s`, c:"good"});
+      if(player.effects.phase>0) tags.push({t:`Phase ${fmt1(player.effects.phase)}s`, c:"warn"});
+      if(player.effects.magnet>0) tags.push({t:`Magnet ${fmt1(player.effects.magnet)}s`, c:"good"});
+      if(run.eventActive) tags.push({t:`Event: ${run.eventActive.toUpperCase()}`, c:"bad"});
+      if(player.dash.iframes>0) tags.push({t:`I-Frames`, c:"good"});
+      if(tags.length===0) tags.push({t:"No Active Effects", c:""});
+      for(const tg of tags){
+        const el = document.createElement("div");
+        el.className = `tag ${tg.c||""}`;
+        el.textContent = tg.t;
+        statusTags.appendChild(el);
+      }
+    }
+
+    // next frame
+    pressed.clear();
+    requestAnimationFrame(draw);
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y, x+w,y+h, rr);
+    ctx.arcTo(x+w,y+h, x,y+h, rr);
+    ctx.arcTo(x,y+h, x,y, rr);
+    ctx.arcTo(x,y, x+w,y, rr);
+    ctx.closePath();
+  }
+
+  // ====== Boot ======
+  renderProfile();
+  showHome();
+
+  // Start draw loop
+  requestAnimationFrame(draw);
+
+})();
+</script>
+</body>
+</html>
